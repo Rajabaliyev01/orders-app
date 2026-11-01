@@ -24,6 +24,7 @@ export default function CartDrawer({ onCheckout }) {
     shippingPrice,
     shippingThreshold,
     totalAmount,
+    totalPrice,
   } = useCart();
 
   if (!isCartOpen) return null;
@@ -153,8 +154,9 @@ export default function CartDrawer({ onCheckout }) {
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-1.5 bg-slate-100 rounded-lg p-1">
                         <button
-                          onClick={() => updateQuantity(item.id, -1)}
+                          onClick={() => updateQuantity(item.id, "decrease")}
                           className="w-5 h-5 flex items-center justify-center rounded bg-white text-slate-700 hover:bg-slate-200 transition-colors cursor-pointer"
+                          title="Kamaytirish"
                         >
                           <Minus size={12} />
                         </button>
@@ -162,8 +164,9 @@ export default function CartDrawer({ onCheckout }) {
                           {item.quantity}
                         </span>
                         <button
-                          onClick={() => updateQuantity(item.id, 1)}
+                          onClick={() => updateQuantity(item.id, "increase")}
                           className="w-5 h-5 flex items-center justify-center rounded bg-white text-slate-700 hover:bg-slate-200 transition-colors cursor-pointer"
+                          title="Oshirish"
                         >
                           <Plus size={12} />
                         </button>
@@ -208,7 +211,7 @@ export default function CartDrawer({ onCheckout }) {
                 </div>
                 <div className="flex justify-between text-base font-extrabold text-slate-900 pt-2 border-t border-slate-200/80">
                   <span>Jami to'lov:</span>
-                  <span className="text-indigo-600">{formatPrice(totalAmount)}</span>
+                  <span className="text-indigo-600">{formatPrice(totalPrice || totalAmount)}</span>
                 </div>
               </div>
 

@@ -1,9 +1,7 @@
-import { useState, useMemo, useRef, useEffect } from "react";
-import { INITIAL_PRODUCTS } from "./data/products";
+import { useState, useMemo, useRef } from "react";
 import { AuthProvider } from "./context/AuthContext";
 import { CartProvider } from "./context/CartContext";
-import { db, isFirebaseConfigured } from "./firebase";
-import { collection, getDocs } from "firebase/firestore";
+import { useProducts } from "./hooks/useProducts";
 
 import FirebaseConfigBanner from "./components/FirebaseConfigBanner";
 import Navbar from "./components/Navbar";
@@ -18,10 +16,12 @@ import OrdersModal from "./components/OrdersModal";
 import NotificationToast from "./components/NotificationToast";
 import Footer from "./components/Footer";
 
-import { Search, Frown } from "lucide-react";
+import { Search, Loader2, AlertCircle, RefreshCw } from "lucide-react";
 
 function ShopContent() {
-  const [products, setProducts] = useState(INITIAL_PRODUCTS);
+  // Firestore real-time mahsulotlar hooki
+  const { products, loading, error, filterByCategory, refetch } = useProducts(true);
+
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedCategory, setSelectedCategory] = useState("Barchasi");
   const [sortBy, setSortBy] = useState("default");
@@ -33,27 +33,6 @@ function ShopContent() {
 
   const productsRef = useRef(null);
 
-  // Firestore dan mahsulotlarni yuklash (agar foydalanuvchi Firestore ga qo'shsa)
-  useEffect(() => {
-    if (isFirebaseConfigured && db) {
-      const fetchFirestoreProducts = async () => {
-        try {
-          const snapshot = await getDocs(collection(db, "products"));
-          if (!snapshot.empty) {
-            const list = [];
-            snapshot.forEach((doc) => {
-              list.push({ id: doc.id, ...doc.data() });
-            });
-            setProducts(list);
-          }
-        } catch (err) {
-          console.warn("Firestore mahsulotlarini yuklashda xatolik:", err);
-        }
-      };
-      fetchFirestoreProducts();
-    }
-  }, []);
-
   const notify = (msg) => {
     setToastMessage(msg);
     setTimeout(() => {
@@ -61,16 +40,12 @@ function ShopContent() {
     }, 3500);
   };
 
-  // Filtrlash va saralash
+  // Kategoriya, qidiruv va saralash mantiqi
   const filteredProducts = useMemo(() => {
-    let result = [...products];
+    // 1. Kategoriya bo'yicha hook orqali filtrlash
+    let result = filterByCategory(selectedCategory);
 
-    // Toifa bo'yicha
-    if (selectedCategory !== "Barchasi") {
-      result = result.filter((p) => p.category === selectedCategory);
-    }
-
-    // Qidiruv so'zi bo'yicha
+    // 2. Qidiruv so'zi bo'yicha filtrlash
     if (searchQuery.trim()) {
       const query = searchQuery.toLowerCase().trim();
       result = result.filter(
@@ -81,7 +56,7 @@ function ShopContent() {
       );
     }
 
-    // Saralash
+    // 3. Narx va reyting bo'yicha saralash
     if (sortBy === "price-asc") {
       result.sort((a, b) => a.price - b.price);
     } else if (sortBy === "price-desc") {
@@ -91,7 +66,7 @@ function ShopContent() {
     }
 
     return result;
-  }, [products, selectedCategory, searchQuery, sortBy]);
+  }, [filterByCategory, selectedCategory, searchQuery, sortBy]);
 
   const scrollToProducts = () => {
     if (productsRef.current) {
@@ -123,14 +98,38 @@ function ShopContent() {
           
           <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-2 mb-2">
             <div>
-              <h2 className="text-2xl sm:text-3xl font-black text-slate-900 tracking-tight">
-                Mahsulotlar katalogi
-              </h2>
+              <div className="flex items-center gap-2">
+                <h2 className="text-2xl sm:text-3xl font-black text-slate-900 tracking-tight">
+                  Mahsulotlar katalogi
+                </h2>
+                {loading && (
+                  <span className="flex items-center gap-1.5 text-xs text-indigo-600 font-semibold bg-indigo-50 px-2.5 py-1 rounded-full animate-pulse">
+                    <Loader2 size={13} className="animate-spin" />
+                    Yangilanmoqda...
+                  </span>
+                )}
+              </div>
               <p className="text-xs sm:text-sm text-slate-500 mt-1">
                 Kafolatlangan sifat va eng maqbul narxlarda
               </p>
             </div>
           </div>
+
+          {/* Xatolik bo'lsa qayta urinish bloki */}
+          {error && (
+            <div className="mb-4 p-4 rounded-2xl bg-amber-50 border border-amber-200 text-amber-800 text-xs flex items-center justify-between gap-3">
+              <div className="flex items-center gap-2">
+                <AlertCircle size={16} className="text-amber-600 shrink-0" />
+                <span>Firestore ma'lumotlarida ogohlantirish: {error} (Lokal mahsulotlar ko'rsatilmoqda)</span>
+              </div>
+              <button
+                onClick={() => refetch()}
+                className="flex items-center gap-1 font-bold text-indigo-600 hover:text-indigo-800 cursor-pointer"
+              >
+                <RefreshCw size={13} /> Qayta yuklash
+              </button>
+            </div>
+          )}
 
           {/* Filters & Sorting */}
           <CategoryFilter

@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { formatPrice } from "../data/products";
 import { useCart } from "../context/CartContext";
-import { Star, ShoppingCart, Plus, Minus, Eye, Check } from "lucide-react";
+import { Star, ShoppingCart, Plus, Minus, Eye } from "lucide-react";
 
 export default function ProductCard({ product, onSelectProduct, onNotify }) {
   const { cart, addToCart, updateQuantity } = useCart();
@@ -21,12 +21,12 @@ export default function ProductCard({ product, onSelectProduct, onNotify }) {
 
   const handleIncrement = (e) => {
     e.stopPropagation();
-    updateQuantity(product.id, 1);
+    updateQuantity(product.id, "increase");
   };
 
   const handleDecrement = (e) => {
     e.stopPropagation();
-    updateQuantity(product.id, -1);
+    updateQuantity(product.id, "decrease");
   };
 
   return (

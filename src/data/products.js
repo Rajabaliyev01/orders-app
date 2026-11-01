@@ -18,7 +18,7 @@ export const INITIAL_PRODUCTS = [
     oldPrice: 15500000,
     rating: 4.9,
     reviewsCount: 128,
-    image: "https://images.unsplash.com/photo-1695048133142-1a20484d2569?w=800&auto=format&fit=crop&q=80",
+    image: "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcTFWorrhuGbwPOA8AtOPnAcAWowLx6mJznhwZ8qjokUTg&s=10",
     badge: "Top Mahsulot",
     inStock: true,
     description: "Titan korpus, A17 Pro kuchli protsessori va professional darajadagi 48 MP kamera tizimi. Batareya quvvati kun bo'yi yetadi.",
@@ -27,6 +27,27 @@ export const INITIAL_PRODUCTS = [
       "Rang": "Natural Titanium",
       "Ekran": "6.7 dyuym Super Retina XDR",
       "Kafolat": "1 yil rasmiy"
+    }
+  },
+  {
+    id: "prod-9",
+    name: "MacBook  M5 Pro (24GB / 1TB)",
+    category: "Elektronika",
+    price: 39589000,
+    //oldPrice: 39589000,
+    rating: 4.8,
+    reviewsCount: 25,
+    image: "images/mac.jpg",
+    badge: "Tavsiya etiladi",
+    inStock: true,
+    description: "yuqori unumdorlik, AI ish jarayonlari va professional vazifalar uchun mo‘ljallangan.",
+    specs: {
+      "Protsessor": "Apple M5 (18-core)",
+      "RAM": "16 GB Unified Memory",
+      "SSD": "1 TB",
+      //"Vazni": "1.24 kg",
+      "Display": "Liquid Retina XDR (120 Hz ProMotion, 1600 nitgacha cho'qqi yorqinligi)",
+
     }
   },
   {
@@ -93,7 +114,7 @@ export const INITIAL_PRODUCTS = [
     oldPrice: 2300000,
     rating: 4.6,
     reviewsCount: 39,
-    image: "https://images.unsplash.com/photo-1580481077195-c992769c3621?w=800&auto=format&fit=crop&q=80",
+    image: "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcQTHqL98CAoMM2FxyIndz1Z5Q9StpLXxTQ2l5LKuSgKEQ&s",
     badge: "Tavsiya etiladi",
     inStock: true,
     description: "Bel sohasini qo'llab-quvvatlovchi zamonaviy dizayn, nafas oluvchi material va sozlanuvchi tirgaklar.",
