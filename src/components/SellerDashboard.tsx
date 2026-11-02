@@ -14,7 +14,7 @@ import {
 } from "../lib/firebase";
 import { collection, writeBatch, doc } from "firebase/firestore";
 import { INITIAL_PRODUCTS } from "../data/products";
-import type { Product } from "../types";
+import type { Product, AppUser } from "../types";
 import {
   Store,
   ArrowLeft,
@@ -437,25 +437,20 @@ function SellerVerificationGate({
   );
 }
 
+interface SellerDashboardContentProps extends SellerDashboardProps {
+  currentUser: AppUser;
+}
+
 /**
- * Sotuvchilar Markazi Asosiy Paneli
+ * Sotuvchilar Markazi Asosiy Paneli (Faqat vakolatli foydalanuvchilar uchun)
  */
-export default function SellerDashboard({
+function SellerDashboardContent({
   onBackToShop,
   onNotify,
-}: SellerDashboardProps) {
+  currentUser,
+}: SellerDashboardContentProps) {
   const { products, loading, refetch } = useProducts(true);
-  const { currentUser, orders, logout } = useAuth();
-
-  // Agar sotuvchi tizimga kirmagan bo'lsa, avtorizatsiya oynasini chiqaramiz
-  if (!currentUser) {
-    return <SellerAuthGate onBackToShop={onBackToShop} onNotify={onNotify} />;
-  }
-
-  // Agar foydalanuvchining pochtasi hali tasdiqlanmagan bo'lsa
-  if (currentUser.emailVerified === false) {
-    return <SellerVerificationGate onBackToShop={onBackToShop} onNotify={onNotify} />;
-  }
+  const { orders, logout } = useAuth();
 
   // Tab: 'products' | 'add' | 'orders'
   const [activeTab, setActiveTab] = useState<"products" | "add" | "orders">("products");
@@ -1468,5 +1463,35 @@ export default function SellerDashboard({
         )}
       </main>
     </div>
+  );
+}
+
+/**
+ * Sotuvchilar Markazi Kirish va Himoya Qatlami (Wrapper)
+ * Rules of Hooks buzilmasligi uchun shartli qaytarishlar bu yerda boshqariladi.
+ */
+export default function SellerDashboard({
+  onBackToShop,
+  onNotify,
+}: SellerDashboardProps) {
+  const { currentUser } = useAuth();
+
+  // 1. Agar sotuvchi tizimga kirmagan bo'lsa, avtorizatsiya oynasini chiqaramiz
+  if (!currentUser) {
+    return <SellerAuthGate onBackToShop={onBackToShop} onNotify={onNotify} />;
+  }
+
+  // 2. Agar foydalanuvchining pochtasi hali tasdiqlanmagan bo'lsa
+  if (currentUser.emailVerified === false) {
+    return <SellerVerificationGate onBackToShop={onBackToShop} onNotify={onNotify} />;
+  }
+
+  // 3. To'liq tasdiqlangan sotuvchi paneli
+  return (
+    <SellerDashboardContent
+      onBackToShop={onBackToShop}
+      onNotify={onNotify}
+      currentUser={currentUser}
+    />
   );
 }
