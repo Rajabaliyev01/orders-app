@@ -1,9 +1,8 @@
 /**
  * FIREBASE SETUP & CONFIGURATION (SDK v9+ Modular)
  * ------------------------------------------------
- * Firebase Auth, Google Auth va Firestore Database initsializatsiyasi.
- * Vite (.env.local: VITE_FIREBASE_*) hamda Next.js (process.env: NEXT_PUBLIC_FIREBASE_*)
- * standartlarini avtomatik aniqlaydi va qo'llab-quvvatlaydi.
+ * Firebase Auth, Google Auth, Firestore Database hamda Analytics initsializatsiyasi.
+ * ordersapp-01 loyihasi uchun to'liq sozlangan.
  */
 
 import { initializeApp, getApps, getApp, type FirebaseApp } from "firebase/app";
@@ -19,11 +18,21 @@ import {
   type Auth,
   type UserCredential,
 } from "firebase/auth";
-import { getFirestore, type Firestore } from "firebase/firestore";
+import {
+  getFirestore,
+  collection,
+  addDoc,
+  doc,
+  updateDoc,
+  deleteDoc,
+  serverTimestamp,
+  type Firestore,
+} from "firebase/firestore";
+import { getAnalytics, isSupported, type Analytics } from "firebase/analytics";
+import type { Product } from "../types";
 
 // Muhit o'zgaruvchilarini Vite yoki Next.js dan xavfsiz o'qish
 const getEnvVar = (key: string): string => {
-  // 1. Vite muhiti (import.meta.env)
   try {
     if (typeof import.meta !== "undefined" && import.meta.env) {
       const viteVal = (import.meta.env as Record<string, string>)[`VITE_${key}`];
@@ -33,9 +42,8 @@ const getEnvVar = (key: string): string => {
     // import.meta mavjud bo'lmagan muhit
   }
 
-  // 2. Next.js / Node muhiti (process.env)
   try {
-    if (typeof process !== "undefined" && process.env) {
+    if (typeof process !== "undefined" && process?.env) {
       const nextVal = process.env[`NEXT_PUBLIC_${key}`] || process.env[`VITE_${key}`];
       if (nextVal) return nextVal;
     }
@@ -47,30 +55,28 @@ const getEnvVar = (key: string): string => {
 };
 
 const firebaseConfig = {
-  apiKey: getEnvVar("FIREBASE_API_KEY"),
-  authDomain: getEnvVar("FIREBASE_AUTH_DOMAIN"),
-  projectId: getEnvVar("FIREBASE_PROJECT_ID"),
-  storageBucket: getEnvVar("FIREBASE_STORAGE_BUCKET"),
-  messagingSenderId: getEnvVar("FIREBASE_MESSAGING_SENDER_ID"),
-  appId: getEnvVar("FIREBASE_APP_ID"),
+  apiKey: getEnvVar("FIREBASE_API_KEY") || "AIzaSyD6Ujl5ANXe35vSWsSXHExBJ9nGCdwwNgI",
+  authDomain: getEnvVar("FIREBASE_AUTH_DOMAIN") || "ordersapp-01.firebaseapp.com",
+  projectId: getEnvVar("FIREBASE_PROJECT_ID") || "ordersapp-01",
+  storageBucket: getEnvVar("FIREBASE_STORAGE_BUCKET") || "ordersapp-01.firebasestorage.app",
+  messagingSenderId: getEnvVar("FIREBASE_MESSAGING_SENDER_ID") || "657504068261",
+  appId: getEnvVar("FIREBASE_APP_ID") || "1:657504068261:web:af924599c083d963c9e34c",
+  measurementId: getEnvVar("FIREBASE_MEASUREMENT_ID") || "G-QC1YG3CHZ9",
 };
 
-// Kalitlar haqiqiy kiritilganligini tekshirish
+// Kalitlar mavjudligini tekshirish
 export const isFirebaseConfigured: boolean = Boolean(
   firebaseConfig.apiKey &&
-  firebaseConfig.apiKey.trim() !== "" &&
-  !firebaseConfig.apiKey.includes("your_api_key") &&
   firebaseConfig.projectId &&
-  firebaseConfig.projectId.trim() !== "" &&
-  !firebaseConfig.projectId.includes("your_project_id")
+  !firebaseConfig.apiKey.includes("your_api_key")
 );
 
 let app: FirebaseApp | null = null;
 let auth: Auth | null = null;
 let db: Firestore | null = null;
+let analytics: Analytics | null = null;
 let googleProvider: GoogleAuthProvider = new GoogleAuthProvider();
 
-// Google Auth sozlamalari (har doim akkount tanlash oynasini chiqarish)
 googleProvider.setCustomParameters({
   prompt: "select_account",
 });
@@ -80,24 +86,31 @@ if (isFirebaseConfigured) {
     app = getApps().length === 0 ? initializeApp(firebaseConfig) : getApp();
     auth = getAuth(app);
     db = getFirestore(app);
-    console.info("🔥 [Firebase] Modular SDK v9+ muvaffaqiyatli initsializatsiya qilindi!");
+
+    // Analytics brauzerda qo'llab-quvvatlansa ishga tushirish
+    if (typeof window !== "undefined") {
+      isSupported().then((supported) => {
+        if (supported && app) {
+          analytics = getAnalytics(app);
+          console.info("📊 [Firebase Analytics] Faollashtirildi");
+        }
+      }).catch(() => {
+        // Analytics xatosi ilovaga xalaqit bermaydi
+      });
+    }
+
+    console.info("🔥 [Firebase] ordersapp-01 loyihasi muvaffaqiyatli ulandi!");
   } catch (error) {
     console.error("❌ [Firebase] Initsializatsiya xatosi:", error);
   }
 } else {
-  console.warn(
-    "⚠️ [Firebase] Konfiguratsiya kalitlari topilmadi. Ilova lokal/demo rejimida ishlamoqda. " +
-    ".env.local faylini to'ldiring."
-  );
+  console.warn("⚠️ [Firebase] Konfiguratsiya kalitlari topilmadi.");
 }
 
 // ----------------------------------------------------
 // AUTHENTICATION HELPER SERVICES
 // ----------------------------------------------------
 
-/**
- * Email va parol orqali tizimga kirish
- */
 export const signInUserWithEmail = async (
   email: string,
   pass: string
@@ -106,9 +119,6 @@ export const signInUserWithEmail = async (
   return await signInWithEmailAndPassword(auth, email, pass);
 };
 
-/**
- * Yangi foydalanuvchini ro'yxatdan o'tkazish
- */
 export const registerUserWithEmail = async (
   email: string,
   pass: string,
@@ -122,37 +132,73 @@ export const registerUserWithEmail = async (
   return credential;
 };
 
-/**
- * Google orqali tizimga kirish (Popup)
- */
 export const signInUserWithGoogle = async (): Promise<UserCredential | null> => {
   if (!auth) throw new Error("Firebase Auth ulanmagan");
   return await signInWithPopup(auth, googleProvider);
 };
 
-/**
- * Tizimdan chiqish
- */
 export const logoutUser = async (): Promise<void> => {
   if (auth) {
     await signOut(auth);
   }
 };
 
-/**
- * Parolni tiklash pochtasini yuborish
- */
 export const resetUserPassword = async (email: string): Promise<void> => {
   if (!auth) throw new Error("Firebase Auth ulanmagan");
   await sendPasswordResetEmail(auth, email);
 };
 
-export { app, auth, db, googleProvider };
+// ----------------------------------------------------
+// FIRESTORE PRODUCTS SERVICES (Sotuvchilar uchun)
+// ----------------------------------------------------
+
+/**
+ * Yangi mahsulotni Firestore 'products' kolleksiyasiga qo'shish
+ */
+export const addProductToFirestore = async (
+  productData: Omit<Product, "id">
+): Promise<string> => {
+  if (!db) throw new Error("Firestore ulanmagan");
+  const docRef = await addDoc(collection(db, "products"), {
+    ...productData,
+    createdAt: serverTimestamp(),
+  });
+  return docRef.id;
+};
+
+/**
+ * Firestore'dagi mahsulotni yangilash
+ */
+export const updateProductInFirestore = async (
+  productId: string,
+  productData: Partial<Product>
+): Promise<void> => {
+  if (!db) throw new Error("Firestore ulanmagan");
+  const docRef = doc(db, "products", productId);
+  await updateDoc(docRef, {
+    ...productData,
+    updatedAt: serverTimestamp(),
+  });
+};
+
+/**
+ * Firestore'dan mahsulotni o'chirish
+ */
+export const deleteProductFromFirestore = async (
+  productId: string
+): Promise<void> => {
+  if (!db) throw new Error("Firestore ulanmagan");
+  const docRef = doc(db, "products", productId);
+  await deleteDoc(docRef);
+};
+
+export { app, auth, db, analytics, googleProvider };
 
 const firebaseServices = {
   app,
   auth,
   db,
+  analytics,
   googleProvider,
   isFirebaseConfigured,
   signInUserWithEmail,
@@ -160,7 +206,9 @@ const firebaseServices = {
   signInUserWithGoogle,
   logoutUser,
   resetUserPassword,
+  addProductToFirestore,
+  updateProductInFirestore,
+  deleteProductFromFirestore,
 };
 
 export default firebaseServices;
-

@@ -1,4 +1,4 @@
-import { useState, useMemo, useRef } from "react";
+import { useState, useMemo, useRef, useCallback } from "react";
 import { AuthProvider } from "./context/AuthContext";
 import { CartProvider } from "./context/CartContext";
 import { useProducts } from "./hooks/useProducts";
@@ -15,10 +15,14 @@ import AuthModal from "./components/AuthModal";
 import OrdersModal from "./components/OrdersModal";
 import NotificationToast from "./components/NotificationToast";
 import Footer from "./components/Footer";
+import SellerDashboard from "./components/SellerDashboard";
 
 import { Search, Loader2, AlertCircle, RefreshCw } from "lucide-react";
 
-function ShopContent() {
+/**
+ * Do'kon asosiy kontenti — mahsulotlar katalogi, banner, filtrlash
+ */
+function ShopContent({ onNotify, onOpenSeller }) {
   // Firestore real-time mahsulotlar hooki
   const { products, loading, error, filterByCategory, refetch } = useProducts(true);
 
@@ -29,16 +33,8 @@ function ShopContent() {
   // Modals state
   const [selectedProduct, setSelectedProduct] = useState(null);
   const [isCheckoutOpen, setIsCheckoutOpen] = useState(false);
-  const [toastMessage, setToastMessage] = useState("");
 
   const productsRef = useRef(null);
-
-  const notify = (msg) => {
-    setToastMessage(msg);
-    setTimeout(() => {
-      setToastMessage("");
-    }, 3500);
-  };
 
   // Kategoriya, qidiruv va saralash mantiqi
   const filteredProducts = useMemo(() => {
@@ -148,7 +144,7 @@ function ShopContent() {
                   key={product.id}
                   product={product}
                   onSelectProduct={(p) => setSelectedProduct(p)}
-                  onNotify={notify}
+                  onNotify={onNotify}
                 />
               ))}
             </div>
@@ -184,7 +180,7 @@ function ShopContent() {
       <ProductModal
         product={selectedProduct}
         onClose={() => setSelectedProduct(null)}
-        onNotify={notify}
+        onNotify={onNotify}
       />
 
       <CartDrawer
@@ -195,18 +191,13 @@ function ShopContent() {
         isOpen={isCheckoutOpen}
         onClose={() => setIsCheckoutOpen(false)}
         onOrderPlaced={(order) => {
-          notify(`Buyurtma qabul qilindi! Raqami: #${order.id}`);
+          onNotify(`Buyurtma qabul qilindi! Raqami: #${order.id}`);
         }}
       />
 
-      <AuthModal onNotify={notify} />
+      <AuthModal onNotify={onNotify} />
 
       <OrdersModal />
-
-      <NotificationToast
-        message={toastMessage}
-        onClose={() => setToastMessage("")}
-      />
 
       {/* Footer */}
       <Footer
@@ -214,16 +205,65 @@ function ShopContent() {
           setSelectedCategory(cat);
           scrollToProducts();
         }}
+        onOpenSeller={onOpenSeller}
       />
     </div>
   );
 }
 
+/**
+ * Asosiy App komponenti — sahifa almashtirish (Do'kon / Sotuvchilar) 
+ * va global notify boshqaruvi
+ */
 export default function App() {
+  // Sahifa holati: "shop" — do'kon, "seller" — sotuvchilar markazi
+  const [currentPage, setCurrentPage] = useState("shop");
+  
+  // Global toast/notification holati (ikkala sahifada ishlaydi)
+  const [toastMessage, setToastMessage] = useState("");
+
+  const notify = useCallback((msg) => {
+    setToastMessage(msg);
+    setTimeout(() => {
+      setToastMessage("");
+    }, 3500);
+  }, []);
+
+  // Sotuvchilar sahifasiga o'tish
+  const handleOpenSeller = useCallback(() => {
+    setCurrentPage("seller");
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  }, []);
+
+  // Do'konga qaytish
+  const handleBackToShop = useCallback(() => {
+    setCurrentPage("shop");
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  }, []);
+
   return (
     <AuthProvider>
       <CartProvider>
-        <ShopContent />
+
+        {/* Sahifaga qarab content almashtirish */}
+        {currentPage === "seller" ? (
+          <SellerDashboard
+            onBackToShop={handleBackToShop}
+            onNotify={notify}
+          />
+        ) : (
+          <ShopContent
+            onNotify={notify}
+            onOpenSeller={handleOpenSeller}
+          />
+        )}
+
+        {/* Global Notification Toast — ikkala sahifada ham ishlaydi */}
+        <NotificationToast
+          message={toastMessage}
+          onClose={() => setToastMessage("")}
+        />
+
       </CartProvider>
     </AuthProvider>
   );

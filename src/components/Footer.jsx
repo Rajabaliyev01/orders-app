@@ -1,6 +1,18 @@
-import { ShoppingBag, Heart, ShieldCheck, Truck, Headphones, RotateCcw, Send, Phone, Mail, MapPin, Globe } from "lucide-react";
+import {
+  ShoppingBag,
+  ShieldCheck,
+  Truck,
+  Headphones,
+  RotateCcw,
+  Send,
+  Phone,
+  Mail,
+  MapPin,
+  Store,
+  ArrowRight,
+} from "lucide-react";
 
-export default function Footer({ onCategoryClick }) {
+export default function Footer({ onCategoryClick, onOpenSeller }) {
   return (
     <footer className="bg-slate-900 text-slate-400 text-xs mt-20 border-t border-slate-800">
       
@@ -49,6 +61,33 @@ export default function Footer({ onCategoryClick }) {
         </div>
       </div>
 
+      {/* SOTUVCHILAR UCHUN BANNER STRIP */}
+      <div className="bg-gradient-to-r from-indigo-950 via-slate-900 to-indigo-900/60 border-b border-indigo-900/50 py-5">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex flex-col sm:flex-row items-center justify-between gap-4">
+          <div className="flex items-center gap-3.5 text-center sm:text-left">
+            <div className="w-11 h-11 rounded-2xl bg-indigo-600 text-white flex items-center justify-center shadow-lg shadow-indigo-600/30 shrink-0">
+              <Store size={22} />
+            </div>
+            <div>
+              <h4 className="font-extrabold text-white text-sm sm:text-base">
+                Do'koningiz bormi? Mahsulotlaringizni biz bilan soting!
+              </h4>
+              <p className="text-[11px] text-indigo-200">
+                Sotuvchilar kabineti orqali o'z mahsulotlaringizni qo'shing va buyurtmalarni boshqaring.
+              </p>
+            </div>
+          </div>
+
+          <button
+            onClick={onOpenSeller}
+            className="px-5 py-2.5 bg-indigo-600 hover:bg-indigo-500 active:scale-95 text-white rounded-xl text-xs font-bold flex items-center gap-2 cursor-pointer transition-all shadow-md shrink-0"
+          >
+            <span>Sotuvchilar bo'limi</span>
+            <ArrowRight size={15} />
+          </button>
+        </div>
+      </div>
+
       {/* Main Footer links */}
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12 grid grid-cols-1 md:grid-cols-4 gap-8">
         
@@ -90,12 +129,21 @@ export default function Footer({ onCategoryClick }) {
           </ul>
         </div>
 
-        {/* Col 3: Customer Service */}
+        {/* Col 3: Customer Service & Seller */}
         <div className="space-y-2">
           <h4 className="font-bold text-white text-xs uppercase tracking-wider mb-2">
-            Mijozlarga xizmat
+            Hamkorlik & Xizmatlar
           </h4>
           <ul className="space-y-1.5">
+            <li>
+              <button
+                onClick={onOpenSeller}
+                className="text-indigo-400 hover:text-indigo-300 font-bold flex items-center gap-1.5 cursor-pointer transition-colors"
+              >
+                <Store size={13} />
+                <span>Sotuvchilar bo'limi (Mahsulot qo'shish)</span>
+              </button>
+            </li>
             <li>Yetkazib berish shartlari</li>
             <li>To'lov usullari</li>
             <li>Kafolat va qaytarish</li>
