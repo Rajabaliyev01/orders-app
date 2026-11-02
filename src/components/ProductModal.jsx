@@ -1,12 +1,15 @@
 import { useState, useEffect } from "react";
 import { formatPrice } from "../data/products";
 import { useCart } from "../context/CartContext";
-import { X, Star, ShoppingCart, Plus, Minus, Check, ShieldCheck, Truck } from "lucide-react";
+import { useWishlist } from "../context/WishlistContext";
+import { X, Star, ShoppingCart, Plus, Minus, Check, ShieldCheck, Truck, Heart } from "lucide-react";
 
 export default function ProductModal({ product, onClose, onNotify }) {
   const { addToCart, cart } = useCart();
+  const { isInWishlist, toggleWishlist } = useWishlist();
   const [quantity, setQuantity] = useState(1);
   const [added, setAdded] = useState(false);
+  const isLiked = product ? isInWishlist(product.id) : false;
 
   useEffect(() => {
     const handleKeyDown = (e) => {
@@ -50,6 +53,29 @@ export default function ProductModal({ product, onClose, onNotify }) {
               {product.badge}
             </span>
           )}
+
+          {/* Quick Heart on Image */}
+          <button
+            onClick={async (e) => {
+              e.stopPropagation();
+              const isNowLiked = await toggleWishlist(product);
+              if (onNotify) {
+                onNotify(
+                  isNowLiked
+                    ? `"${product.name}" sevimlilarga qo'shildi ❤️`
+                    : `"${product.name}" sevimlilardan o'chirildi`
+                );
+              }
+            }}
+            className={`absolute top-4 right-4 md:right-auto md:left-4 md:top-14 z-10 p-2.5 rounded-xl shadow-md backdrop-blur-xs transition-all cursor-pointer active:scale-90 ${
+              isLiked
+                ? "bg-white text-rose-500 fill-rose-500 shadow-rose-200"
+                : "bg-white/90 hover:bg-white text-slate-400 hover:text-rose-500"
+            }`}
+            title={isLiked ? "Sevimlilardan o'chirish" : "Sevimlilarga qo'shish"}
+          >
+            <Heart size={18} className={isLiked ? "fill-rose-500 text-rose-500" : ""} />
+          </button>
           <img
             src={product.image}
             alt={product.name}
@@ -174,6 +200,28 @@ export default function ProductModal({ product, onClose, onNotify }) {
                   <span>Savatchaga qo'shish</span>
                 </>
               )}
+            </button>
+
+            {/* Heart Wishlist Button */}
+            <button
+              onClick={async () => {
+                const isNowLiked = await toggleWishlist(product);
+                if (onNotify) {
+                  onNotify(
+                    isNowLiked
+                      ? `"${product.name}" sevimlilarga qo'shildi ❤️`
+                      : `"${product.name}" sevimlilardan o'chirildi`
+                  );
+                }
+              }}
+              className={`p-3 rounded-xl border transition-all cursor-pointer flex items-center justify-center active:scale-90 ${
+                isLiked
+                  ? "bg-rose-50 border-rose-200 text-rose-500 fill-rose-500 shadow-sm"
+                  : "bg-slate-50 border-slate-200 text-slate-500 hover:text-rose-500 hover:bg-rose-50/50"
+              }`}
+              title={isLiked ? "Sevimlilardan o'chirish" : "Sevimlilarga qo'shish"}
+            >
+              <Heart size={20} className={isLiked ? "fill-rose-500 text-rose-500" : ""} />
             </button>
           </div>
         </div>

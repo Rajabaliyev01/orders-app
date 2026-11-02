@@ -93,3 +93,16 @@ export interface UseProductsResult {
   filterByCategory: (category: string) => Product[];
   refetch: () => Promise<void>;
 }
+
+export interface WishlistContextValue {
+  wishlist: Product[];
+  totalWishlistItems: number;
+  isWishlistOpen: boolean;
+  isInWishlist: (productId: string) => boolean;
+  toggleWishlist: (product: Product) => Promise<boolean>;
+  addToWishlist: (product: Product) => Promise<void>;
+  removeFromWishlist: (productId: string) => Promise<void>;
+  clearWishlist: () => Promise<void>;
+  setIsWishlistOpen: (open: boolean) => void;
+  loading: boolean;
+}

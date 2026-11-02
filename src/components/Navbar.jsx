@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useCart } from "../context/CartContext";
 import { useAuth } from "../context/AuthContext";
+import { useWishlist } from "../context/WishlistContext";
 import {
   ShoppingBag,
   ShoppingCart,
@@ -9,12 +10,14 @@ import {
   LogOut,
   Package,
   X,
-  Menu
+  Menu,
+  Heart,
 } from "lucide-react";
 
 export default function Navbar({ searchQuery, setSearchQuery, selectedCategory, setSelectedCategory }) {
   const { totalItems, setIsCartOpen, subtotal } = useCart();
   const { currentUser, logout, setAuthModalOpen, setAuthMode, setOrdersModalOpen, orders } = useAuth();
+  const { totalWishlistItems, setIsWishlistOpen } = useWishlist();
   const [profileDropdownOpen, setProfileDropdownOpen] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
@@ -90,6 +93,24 @@ export default function Navbar({ searchQuery, setSearchQuery, selectedCategory, 
               )}
             </button>
 
+            {/* Wishlist (Sevimlilar) Button */}
+            <button
+              onClick={() => setIsWishlistOpen(true)}
+              className="relative p-2.5 text-slate-700 hover:text-rose-600 hover:bg-rose-50/70 rounded-xl transition-all cursor-pointer flex items-center gap-1.5"
+              title="Sevimlilar ro'yxati"
+            >
+              <Heart
+                size={20}
+                className={totalWishlistItems > 0 ? "fill-rose-500 text-rose-500" : ""}
+              />
+              <span className="hidden lg:inline text-xs font-semibold">Sevimlilar</span>
+              {totalWishlistItems > 0 && (
+                <span className="flex h-5 min-w-[20px] px-1 items-center justify-center rounded-full bg-rose-500 text-white text-[11px] font-bold shadow-xs">
+                  {totalWishlistItems}
+                </span>
+              )}
+            </button>
+
             {/* Profile / Auth Button */}
             {currentUser ? (
               <div className="relative">
@@ -124,6 +145,16 @@ export default function Navbar({ searchQuery, setSearchQuery, selectedCategory, 
                       </p>
                       <p className="text-xs text-slate-600 truncate">{currentUser.email}</p>
                     </div>
+
+                    <button
+                      onClick={() => {
+                        setProfileDropdownOpen(false);
+                        setIsWishlistOpen(true);
+                      }}
+                      className="w-full px-4 py-2 text-left text-slate-700 hover:bg-slate-50 flex items-center gap-2 cursor-pointer transition-colors"
+                    >
+                      <Heart size={16} className="text-rose-500 fill-rose-500" /> Sevimlilar ro'yxati ({totalWishlistItems})
+                    </button>
 
                     <button
                       onClick={() => {

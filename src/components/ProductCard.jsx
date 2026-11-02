@@ -1,10 +1,13 @@
 import { useState } from "react";
 import { formatPrice } from "../data/products";
 import { useCart } from "../context/CartContext";
-import { Star, ShoppingCart, Plus, Minus, Eye } from "lucide-react";
+import { useWishlist } from "../context/WishlistContext";
+import { Star, ShoppingCart, Plus, Minus, Eye, Heart } from "lucide-react";
 
 export default function ProductCard({ product, onSelectProduct, onNotify }) {
   const { cart, addToCart, updateQuantity } = useCart();
+  const { isInWishlist, toggleWishlist } = useWishlist();
+  const isLiked = isInWishlist(product.id);
   const [imageLoaded, setImageLoaded] = useState(false);
   const [imageError, setImageError] = useState(false);
 
@@ -51,14 +54,41 @@ export default function ProductCard({ product, onSelectProduct, onNotify }) {
         </div>
       )}
 
-      {/* Quick view button on hover */}
-      <div className="absolute top-3 right-3 z-10 opacity-0 group-hover:opacity-100 transition-opacity">
+      {/* Top Right Action Buttons (Heart Wishlist & Quick View) */}
+      <div className="absolute top-3 right-3 z-10 flex flex-col gap-1.5">
+        {/* Heart Wishlist Button */}
+        <button
+          onClick={async (e) => {
+            e.stopPropagation();
+            const added = await toggleWishlist(product);
+            if (onNotify) {
+              onNotify(
+                added
+                  ? `"${product.name}" sevimlilarga qo'shildi ❤️`
+                  : `"${product.name}" sevimlilardan o'chirildi`
+              );
+            }
+          }}
+          className={`p-2 rounded-xl backdrop-blur-xs transition-all cursor-pointer shadow-md active:scale-90 ${
+            isLiked
+              ? "bg-white text-rose-500 fill-rose-500 shadow-rose-200"
+              : "bg-white/85 hover:bg-white text-slate-400 hover:text-rose-500 sm:opacity-0 group-hover:opacity-100"
+          }`}
+          title={isLiked ? "Sevimlilardan o'chirish" : "Sevimlilarga saqlash"}
+        >
+          <Heart
+            size={16}
+            className={isLiked ? "fill-rose-500 text-rose-500" : ""}
+          />
+        </button>
+
+        {/* Quick View Button */}
         <button
           onClick={(e) => {
             e.stopPropagation();
             onSelectProduct(product);
           }}
-          className="p-2 bg-white/90 hover:bg-white text-slate-700 hover:text-indigo-600 rounded-xl shadow-md backdrop-blur-xs transition-colors cursor-pointer"
+          className="p-2 bg-white/85 hover:bg-white text-slate-600 hover:text-indigo-600 rounded-xl shadow-md backdrop-blur-xs transition-all cursor-pointer sm:opacity-0 group-hover:opacity-100 active:scale-90"
           title="Batafsil ko'rish"
         >
           <Eye size={16} />

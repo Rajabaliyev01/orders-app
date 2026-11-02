@@ -25,6 +25,9 @@ import {
   collection,
   addDoc,
   doc,
+  setDoc,
+  getDocs,
+  onSnapshot,
   updateDoc,
   deleteDoc,
   serverTimestamp,
@@ -212,6 +215,88 @@ export const reloadCurrentUser = async (): Promise<boolean> => {
   return Boolean(auth.currentUser.emailVerified);
 };
 
+// ----------------------------------------------------
+// FIRESTORE WISHLIST SERVICES (Sevimlilar Ro'yxati)
+// Path: users/{uid}/wishlist/{productId}
+// ----------------------------------------------------
+
+/**
+ * Foydalanuvchining Firestore wishlist kolleksiyasiga mahsulot qo'shish
+ */
+export const addToWishlistFirestore = async (
+  uid: string,
+  product: Product
+): Promise<void> => {
+  if (!db) throw new Error("Firestore ulanmagan");
+  const docRef = doc(db, "users", uid, "wishlist", String(product.id));
+  await setDoc(docRef, {
+    id: String(product.id),
+    name: product.name,
+    price: product.price,
+    oldPrice: product.oldPrice || null,
+    category: product.category,
+    image: product.image,
+    rating: product.rating || 5,
+    reviewsCount: product.reviewsCount || 0,
+    badge: product.badge || null,
+    inStock: product.inStock !== false,
+    description: product.description || "",
+    sellerId: product.sellerId || null,
+    sellerName: product.sellerName || null,
+    addedAt: serverTimestamp(),
+  });
+};
+
+/**
+ * Foydalanuvchining Firestore wishlist kolleksiyasidan mahsulotni o'chirish
+ */
+export const removeFromWishlistFirestore = async (
+  uid: string,
+  productId: string
+): Promise<void> => {
+  if (!db) throw new Error("Firestore ulanmagan");
+  const docRef = doc(db, "users", uid, "wishlist", String(productId));
+  await deleteDoc(docRef);
+};
+
+/**
+ * Foydalanuvchining butun wishlist kolleksiyasini Firestore'dan olish
+ */
+export const getWishlistFromFirestore = async (
+  uid: string
+): Promise<Product[]> => {
+  if (!db) return [];
+  try {
+    const colRef = collection(db, "users", uid, "wishlist");
+    const snap = await getDocs(colRef);
+    const items: Product[] = [];
+    snap.forEach((d) => {
+      const data = d.data();
+      if (data && data.name) {
+        items.push({
+          id: d.id,
+          name: data.name,
+          price: Number(data.price) || 0,
+          oldPrice: data.oldPrice ? Number(data.oldPrice) : undefined,
+          category: data.category || "Barchasi",
+          image: data.image || "",
+          rating: Number(data.rating) || 5,
+          reviewsCount: Number(data.reviewsCount) || 0,
+          badge: data.badge || undefined,
+          inStock: Boolean(data.inStock),
+          description: data.description || "",
+          sellerId: data.sellerId || undefined,
+          sellerName: data.sellerName || undefined,
+        });
+      }
+    });
+    return items;
+  } catch (err) {
+    console.warn("Firestore wishlist olishda ogohlantirish:", err);
+    return [];
+  }
+};
+
 export { app, auth, db, analytics, googleProvider };
 
 const firebaseServices = {
@@ -231,6 +316,9 @@ const firebaseServices = {
   addProductToFirestore,
   updateProductInFirestore,
   deleteProductFromFirestore,
+  addToWishlistFirestore,
+  removeFromWishlistFirestore,
+  getWishlistFromFirestore,
 };
 
 export default firebaseServices;

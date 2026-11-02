@@ -1,6 +1,7 @@
 import { useState, useEffect, useMemo, useRef, useCallback, lazy, Suspense } from "react";
 import { AuthProvider } from "./context/AuthContext";
 import { CartProvider } from "./context/CartContext";
+import { WishlistProvider } from "./context/WishlistContext";
 import { useProducts } from "./hooks/useProducts";
 
 import Navbar from "./components/Navbar";
@@ -9,6 +10,7 @@ import CategoryFilter from "./components/CategoryFilter";
 import ProductCard from "./components/ProductCard";
 import ProductModal from "./components/ProductModal";
 import CartDrawer from "./components/CartDrawer";
+import WishlistDrawer from "./components/WishlistDrawer";
 import CheckoutModal from "./components/CheckoutModal";
 import AuthModal from "./components/AuthModal";
 import OrdersModal from "./components/OrdersModal";
@@ -192,6 +194,11 @@ function ShopContent({ onNotify, onOpenSeller }) {
         onCheckout={() => setIsCheckoutOpen(true)}
       />
 
+      <WishlistDrawer
+        onNotify={onNotify}
+        onSelectProduct={(p) => setSelectedProduct(p)}
+      />
+
       <CheckoutModal
         isOpen={isCheckoutOpen}
         onClose={() => setIsCheckoutOpen(false)}
@@ -273,33 +280,35 @@ export default function App() {
   return (
     <AuthProvider>
       <CartProvider>
+        <WishlistProvider>
 
-        {/* Sahifaga qarab content almashtirish */}
-        {currentPage === "seller" ? (
-          <Suspense fallback={
-            <div className="min-h-screen bg-slate-900 flex flex-col items-center justify-center text-slate-300 gap-3">
-              <Loader2 size={32} className="animate-spin text-indigo-500" />
-              <p className="text-sm">Sotuvchilar bo'limi yuklanmoqda...</p>
-            </div>
-          }>
-            <SellerDashboard
-              onBackToShop={handleBackToShop}
+          {/* Sahifaga qarab content almashtirish */}
+          {currentPage === "seller" ? (
+            <Suspense fallback={
+              <div className="min-h-screen bg-slate-900 flex flex-col items-center justify-center text-slate-300 gap-3">
+                <Loader2 size={32} className="animate-spin text-indigo-500" />
+                <p className="text-sm">Sotuvchilar bo'limi yuklanmoqda...</p>
+              </div>
+            }>
+              <SellerDashboard
+                onBackToShop={handleBackToShop}
+                onNotify={notify}
+              />
+            </Suspense>
+          ) : (
+            <ShopContent
               onNotify={notify}
+              onOpenSeller={handleOpenSeller}
             />
-          </Suspense>
-        ) : (
-          <ShopContent
-            onNotify={notify}
-            onOpenSeller={handleOpenSeller}
+          )}
+
+          {/* Global Notification Toast — ikkala sahifada ham ishlaydi */}
+          <NotificationToast
+            message={toastMessage}
+            onClose={() => setToastMessage("")}
           />
-        )}
 
-        {/* Global Notification Toast — ikkala sahifada ham ishlaydi */}
-        <NotificationToast
-          message={toastMessage}
-          onClose={() => setToastMessage("")}
-        />
-
+        </WishlistProvider>
       </CartProvider>
     </AuthProvider>
   );
