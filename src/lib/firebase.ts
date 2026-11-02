@@ -15,8 +15,10 @@ import {
   signOut,
   updateProfile,
   sendPasswordResetEmail,
+  sendEmailVerification,
   type Auth,
   type UserCredential,
+  type User as FirebaseUser,
 } from "firebase/auth";
 import {
   getFirestore,
@@ -192,6 +194,24 @@ export const deleteProductFromFirestore = async (
   await deleteDoc(docRef);
 };
 
+/**
+ * Foydalanuvchiga email tasdiqlash xatini yuborish (Firebase Templates orqali)
+ */
+export const sendVerificationEmail = async (user?: FirebaseUser | null): Promise<void> => {
+  const targetUser = user || auth?.currentUser;
+  if (!targetUser) throw new Error("Foydalanuvchi tizimga kirmagan");
+  await sendEmailVerification(targetUser);
+};
+
+/**
+ * Foydalanuvchi ma'lumotlarini qayta yuklab, email tasdiqlanganligini tekshirish
+ */
+export const reloadCurrentUser = async (): Promise<boolean> => {
+  if (!auth?.currentUser) return false;
+  await auth.currentUser.reload();
+  return Boolean(auth.currentUser.emailVerified);
+};
+
 export { app, auth, db, analytics, googleProvider };
 
 const firebaseServices = {
@@ -206,6 +226,8 @@ const firebaseServices = {
   signInUserWithGoogle,
   logoutUser,
   resetUserPassword,
+  sendVerificationEmail,
+  reloadCurrentUser,
   addProductToFirestore,
   updateProductInFirestore,
   deleteProductFromFirestore,

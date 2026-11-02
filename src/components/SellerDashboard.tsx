@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import {
   useProducts,
   saveProductLocally,
@@ -38,6 +38,8 @@ import {
   User,
   LogOut,
   ShieldCheck,
+  MailCheck,
+  RefreshCw,
 } from "lucide-react";
 
 interface SellerDashboardProps {
@@ -295,6 +297,147 @@ function SellerAuthGate({
 }
 
 /**
+ * Sotuvchi pochtasini tasdiqlash oynasi (Agar email tasdiqlanmagan bo'lsa)
+ */
+function SellerVerificationGate({
+  onBackToShop,
+  onNotify,
+}: {
+  onBackToShop: () => void;
+  onNotify: (msg: string) => void;
+}) {
+  const { currentUser, reloadUser, sendEmailVerificationLink, logout } = useAuth();
+  const [checking, setChecking] = useState(false);
+  const [resendCooldown, setResendCooldown] = useState(0);
+  const [resendSuccess, setResendSuccess] = useState("");
+  const [error, setError] = useState("");
+
+  useEffect(() => {
+    if (resendCooldown <= 0) return;
+    const interval = setInterval(() => {
+      setResendCooldown((prev) => (prev > 0 ? prev - 1 : 0));
+    }, 1000);
+    return () => clearInterval(interval);
+  }, [resendCooldown]);
+
+  const handleCheck = async () => {
+    setError("");
+    setChecking(true);
+    try {
+      const verified = await reloadUser();
+      if (verified) {
+        onNotify("Pochtanggiz muvaffaqiyatli tasdiqlandi! Sotuvchilar Markaziga xush kelibsiz!");
+      } else {
+        setError("Pochtangiz hali tasdiqlanmadi. Iltimos pochtangizga borgan xatdagi havolani bosing.");
+      }
+    } catch {
+      setError("Tekshirishda xatolik yuz berdi");
+    } finally {
+      setChecking(false);
+    }
+  };
+
+  const handleResend = async () => {
+    setError("");
+    setResendSuccess("");
+    try {
+      await sendEmailVerificationLink();
+      setResendSuccess("Tasdiqlash havolasi pochtangizga qayta yuborildi!");
+      setResendCooldown(60);
+    } catch {
+      setError("Xat yuborishda xatolik yuz berdi");
+    }
+  };
+
+  return (
+    <div className="min-h-screen bg-slate-950 text-slate-100 flex flex-col justify-center items-center px-4 py-12 selection:bg-indigo-500 selection:text-white">
+      <div className="w-full max-w-md bg-slate-900 border border-slate-800 rounded-3xl p-6 sm:p-8 shadow-2xl space-y-6 text-center">
+        <div className="w-16 h-16 rounded-2xl bg-indigo-950/60 border border-indigo-700/50 flex items-center justify-center text-indigo-400 mx-auto shadow-lg">
+          <MailCheck size={32} className="animate-pulse" />
+        </div>
+
+        <div className="space-y-1.5">
+          <h1 className="text-xl font-black text-white">
+            Sotuvchi pochtasini tasdiqlang
+          </h1>
+          <p className="text-xs text-slate-400 max-w-xs mx-auto leading-relaxed">
+            Mahsulot qo'shish va boshqarish uchun <span className="text-indigo-400 font-bold break-all">{currentUser?.email}</span> manziliga yuborilgan tasdiqlash havolasini bosing.
+          </p>
+        </div>
+
+        <div className="p-3.5 bg-slate-950 border border-slate-800 rounded-2xl text-xs text-left space-y-1.5">
+          <p className="font-bold text-slate-300">Tasdiqlash tartibi:</p>
+          <ol className="list-decimal list-inside space-y-1 text-slate-400 text-[11px]">
+            <li>Pochtanggizni (Inbox yoki Spam) oching;</li>
+            <li>Firebase'dan kelgan <strong>"Verify your email"</strong> havolasini bosing;</li>
+            <li>So'ng bu yerda <strong>"Men tasdiqladim"</strong> tugmasini bosing.</li>
+          </ol>
+        </div>
+
+        {error && (
+          <div className="p-3 bg-rose-950/50 border border-rose-800/50 text-rose-300 text-xs rounded-xl flex items-center gap-2 text-left">
+            <AlertCircle size={15} className="shrink-0" />
+            <span>{error}</span>
+          </div>
+        )}
+
+        {resendSuccess && (
+          <div className="p-3 bg-emerald-950/50 border border-emerald-800/50 text-emerald-300 text-xs rounded-xl flex items-center gap-2 text-left">
+            <CheckCircle2 size={15} className="shrink-0" />
+            <span>{resendSuccess}</span>
+          </div>
+        )}
+
+        <div className="space-y-2.5 pt-2">
+          <button
+            onClick={handleCheck}
+            disabled={checking}
+            className="w-full py-3 bg-indigo-600 hover:bg-indigo-500 active:scale-98 disabled:opacity-60 text-white rounded-xl font-bold text-xs sm:text-sm flex items-center justify-center gap-2 cursor-pointer transition-all shadow-lg shadow-indigo-600/30"
+          >
+            {checking ? (
+              <>
+                <RefreshCw size={15} className="animate-spin" />
+                <span>Tekshirilmoqda...</span>
+              </>
+            ) : (
+              <>
+                <CheckCircle2 size={15} />
+                <span>Men tasdiqladim (Tekshirish)</span>
+              </>
+            )}
+          </button>
+
+          <button
+            onClick={handleResend}
+            disabled={resendCooldown > 0}
+            className="w-full py-2 text-xs text-indigo-400 hover:text-indigo-300 font-semibold cursor-pointer disabled:text-slate-600 transition-colors"
+          >
+            {resendCooldown > 0
+              ? `Xatni qayta yuborish (${resendCooldown}s)`
+              : "Tasdiqlash xatini qayta yuborish"}
+          </button>
+
+          <div className="flex items-center justify-between pt-2 border-t border-slate-800 text-xs text-slate-500">
+            <button
+              onClick={() => logout()}
+              className="hover:text-slate-300 cursor-pointer transition-colors"
+            >
+              Chiqish (Logout)
+            </button>
+            <button
+              onClick={onBackToShop}
+              className="hover:text-slate-300 cursor-pointer transition-colors"
+            >
+              Do'konga qaytish
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/**
  * Sotuvchilar Markazi Asosiy Paneli
  */
 export default function SellerDashboard({
@@ -307,6 +450,11 @@ export default function SellerDashboard({
   // Agar sotuvchi tizimga kirmagan bo'lsa, avtorizatsiya oynasini chiqaramiz
   if (!currentUser) {
     return <SellerAuthGate onBackToShop={onBackToShop} onNotify={onNotify} />;
+  }
+
+  // Agar foydalanuvchining pochtasi hali tasdiqlanmagan bo'lsa
+  if (currentUser.emailVerified === false) {
+    return <SellerVerificationGate onBackToShop={onBackToShop} onNotify={onNotify} />;
   }
 
   // Tab: 'products' | 'add' | 'orders'

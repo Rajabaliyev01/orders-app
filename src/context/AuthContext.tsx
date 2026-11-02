@@ -26,6 +26,7 @@ import {
   signInWithPopup,
   signOut,
   updateProfile,
+  sendEmailVerification,
   type User as FirebaseUser,
 } from "firebase/auth";
 import {
@@ -65,6 +66,8 @@ export interface AuthContextValue {
   logout: () => Promise<void>;
   createOrder: (orderData: CreateOrderParams) => Promise<Order>;
   loadOrders: () => Promise<void>;
+  sendEmailVerificationLink: () => Promise<void>;
+  reloadUser: () => Promise<boolean>;
 }
 
 const AuthContext = createContext<AuthContextValue | undefined>(undefined);
@@ -90,6 +93,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
             email: user.email,
             displayName: user.displayName || (user.email ? user.email.split("@")[0] : "Foydalanuvchi"),
             photoURL: user.photoURL || null,
+            emailVerified: Boolean(user.emailVerified),
           });
         } else {
           setCurrentUser(null);
@@ -204,6 +208,12 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       if (displayName && res.user) {
         await updateProfile(res.user, { displayName });
       }
+      // Firebase rasmiy email tasdiqlash xatini avtomatik yuborish
+      try {
+        await sendEmailVerification(res.user);
+      } catch (err) {
+        console.warn("Tasdiqlash xati yuborishda ogohlantirish:", err);
+      }
       return res.user;
     } else {
       const demoUser: AppUser = {
@@ -211,11 +221,46 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         email,
         displayName: displayName || email.split("@")[0],
         photoURL: null,
+        emailVerified: false,
       };
       localStorage.setItem(LOCAL_USER_KEY, JSON.stringify(demoUser));
       setCurrentUser(demoUser);
       return demoUser;
     }
+  };
+
+  /**
+   * Tasdiqlash xatini qayta yuborish
+   */
+  const sendEmailVerificationLink = async (): Promise<void> => {
+    if (isFirebaseConfigured && auth && auth.currentUser) {
+      await sendEmailVerification(auth.currentUser);
+    }
+  };
+
+  /**
+   * Foydalanuvchining email tasdiqlanganligini qayta tekshirish
+   */
+  const reloadUser = async (): Promise<boolean> => {
+    if (isFirebaseConfigured && auth && auth.currentUser) {
+      await auth.currentUser.reload();
+      const verified = Boolean(auth.currentUser.emailVerified);
+      setCurrentUser((prev) =>
+        prev
+          ? {
+              ...prev,
+              emailVerified: verified,
+            }
+          : null
+      );
+      return verified;
+    } else if (currentUser) {
+      const updated: AppUser = { ...currentUser, emailVerified: true };
+      localStorage.setItem(LOCAL_USER_KEY, JSON.stringify(updated));
+      setCurrentUser(updated);
+      return true;
+    }
+    return false;
   };
 
   /**
@@ -309,6 +354,8 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         logout,
         createOrder,
         loadOrders,
+        sendEmailVerificationLink,
+        reloadUser,
       }}
     >
       {children}
