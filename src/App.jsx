@@ -1,4 +1,4 @@
-import { useState, useMemo, useRef, useCallback, Component, lazy, Suspense } from "react";
+import { useState, useEffect, useMemo, useRef, useCallback, lazy, Suspense } from "react";
 import { AuthProvider } from "./context/AuthContext";
 import { CartProvider } from "./context/CartContext";
 import { useProducts } from "./hooks/useProducts";
@@ -20,55 +20,6 @@ import { Search, Loader2, AlertCircle, RefreshCw } from "lucide-react";
 
 // SellerDashboard lazy import qilamiz — bundling va xato izolatsiyasi uchun
 const SellerDashboard = lazy(() => import("./components/SellerDashboard"));
-
-/**
- * Error Boundary — React xatolarini ushlash va oq ekran oldini olish
- */
-class ErrorBoundary extends Component {
-  constructor(props) {
-    super(props);
-    this.state = { hasError: false, error: null };
-  }
-
-  static getDerivedStateFromError(error) {
-    return { hasError: true, error };
-  }
-
-  componentDidCatch(error, errorInfo) {
-    console.error("🔴 [ErrorBoundary] React xatosi ushlandi:", error, errorInfo);
-  }
-
-  render() {
-    if (this.state.hasError) {
-      return (
-        <div className="min-h-screen flex items-center justify-center bg-slate-50 p-6">
-          <div className="max-w-md w-full bg-white rounded-2xl shadow-xl p-8 text-center border border-slate-200">
-            <div className="w-16 h-16 rounded-full bg-rose-100 flex items-center justify-center mx-auto mb-4">
-              <AlertCircle size={32} className="text-rose-500" />
-            </div>
-            <h2 className="text-xl font-bold text-slate-900 mb-2">
-              Xatolik yuz berdi
-            </h2>
-            <p className="text-sm text-slate-500 mb-4">
-              Ilovada kutilmagan xatolik sodir bo'ldi. Sahifani qayta yuklang.
-            </p>
-            <pre className="text-xs text-left bg-slate-100 p-3 rounded-lg mb-4 overflow-auto max-h-32 text-rose-600">
-              {this.state.error?.message || "Noma'lum xatolik"}
-            </pre>
-            <button
-              onClick={() => window.location.reload()}
-              className="px-6 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-sm font-bold cursor-pointer transition-colors"
-            >
-              Sahifani qayta yuklash
-            </button>
-          </div>
-        </div>
-      );
-    }
-
-    return this.props.children;
-  }
-}
 
 /**
  * Do'kon asosiy kontenti — mahsulotlar katalogi, banner, filtrlash
@@ -274,8 +225,13 @@ function ShopContent({ onNotify, onOpenSeller }) {
  * va global notify boshqaruvi
  */
 export default function App() {
-  // Sahifa holati: "shop" — do'kon, "seller" — sotuvchilar markazi
-  const [currentPage, setCurrentPage] = useState("shop");
+  // Sahifa holati: URL hash (#seller) orqali to'g'ridan-to'g'ri ochish imkoni
+  const [currentPage, setCurrentPage] = useState(() => {
+    if (typeof window !== "undefined" && (window.location.hash === "#seller" || window.location.search.includes("page=seller"))) {
+      return "seller";
+    }
+    return "shop";
+  });
   
   // Global toast/notification holati (ikkala sahifada ishlaydi)
   const [toastMessage, setToastMessage] = useState("");
@@ -290,48 +246,65 @@ export default function App() {
   // Sotuvchilar sahifasiga o'tish
   const handleOpenSeller = useCallback(() => {
     setCurrentPage("seller");
+    if (typeof window !== "undefined") {
+      window.location.hash = "seller";
+    }
     window.scrollTo({ top: 0, behavior: "smooth" });
   }, []);
 
   // Do'konga qaytish
   const handleBackToShop = useCallback(() => {
     setCurrentPage("shop");
+    if (typeof window !== "undefined") {
+      window.location.hash = "";
+    }
     window.scrollTo({ top: 0, behavior: "smooth" });
   }, []);
 
+  // URL hash o'zgarishini tinglash (brauzer orqaga/oldinga tugmalari uchun)
+  useEffect(() => {
+    const handleHashChange = () => {
+      if (window.location.hash === "#seller") {
+        setCurrentPage("seller");
+      } else {
+        setCurrentPage("shop");
+      }
+    };
+    window.addEventListener("hashchange", handleHashChange);
+    return () => window.removeEventListener("hashchange", handleHashChange);
+  }, []);
+
   return (
-    <ErrorBoundary>
-      <AuthProvider>
-        <CartProvider>
+    <AuthProvider>
+      <CartProvider>
 
-          {/* Sahifaga qarab content almashtirish */}
-          {currentPage === "seller" ? (
-            <Suspense fallback={
-              <div className="min-h-screen bg-slate-900 flex flex-col items-center justify-center text-slate-300 gap-3">
-                <Loader2 size={32} className="animate-spin text-indigo-500" />
-                <p className="text-sm">Sotuvchilar bo'limi yuklanmoqda...</p>
-              </div>
-            }>
-              <SellerDashboard
-                onBackToShop={handleBackToShop}
-                onNotify={notify}
-              />
-            </Suspense>
-          ) : (
-            <ShopContent
+        {/* Sahifaga qarab content almashtirish */}
+        {currentPage === "seller" ? (
+          <Suspense fallback={
+            <div className="min-h-screen bg-slate-900 flex flex-col items-center justify-center text-slate-300 gap-3">
+              <Loader2 size={32} className="animate-spin text-indigo-500" />
+              <p className="text-sm">Sotuvchilar bo'limi yuklanmoqda...</p>
+            </div>
+          }>
+            <SellerDashboard
+              onBackToShop={handleBackToShop}
               onNotify={notify}
-              onOpenSeller={handleOpenSeller}
             />
-          )}
-
-          {/* Global Notification Toast — ikkala sahifada ham ishlaydi */}
-          <NotificationToast
-            message={toastMessage}
-            onClose={() => setToastMessage("")}
+          </Suspense>
+        ) : (
+          <ShopContent
+            onNotify={notify}
+            onOpenSeller={handleOpenSeller}
           />
+        )}
 
-        </CartProvider>
-      </AuthProvider>
-    </ErrorBoundary>
+        {/* Global Notification Toast — ikkala sahifada ham ishlaydi */}
+        <NotificationToast
+          message={toastMessage}
+          onClose={() => setToastMessage("")}
+        />
+
+      </CartProvider>
+    </AuthProvider>
   );
 }
