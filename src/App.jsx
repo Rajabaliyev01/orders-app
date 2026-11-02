@@ -1,4 +1,4 @@
-import { useState, useMemo, useRef, useCallback, Component } from "react";
+import { useState, useMemo, useRef, useCallback, Component, lazy, Suspense } from "react";
 import { AuthProvider } from "./context/AuthContext";
 import { CartProvider } from "./context/CartContext";
 import { useProducts } from "./hooks/useProducts";
@@ -19,7 +19,7 @@ import Footer from "./components/Footer";
 import { Search, Loader2, AlertCircle, RefreshCw } from "lucide-react";
 
 // SellerDashboard lazy import qilamiz — bundling va xato izolatsiyasi uchun
-import SellerDashboard from "./components/SellerDashboard";
+const SellerDashboard = lazy(() => import("./components/SellerDashboard"));
 
 /**
  * Error Boundary — React xatolarini ushlash va oq ekran oldini olish
@@ -306,10 +306,17 @@ export default function App() {
 
           {/* Sahifaga qarab content almashtirish */}
           {currentPage === "seller" ? (
-            <SellerDashboard
-              onBackToShop={handleBackToShop}
-              onNotify={notify}
-            />
+            <Suspense fallback={
+              <div className="min-h-screen bg-slate-900 flex flex-col items-center justify-center text-slate-300 gap-3">
+                <Loader2 size={32} className="animate-spin text-indigo-500" />
+                <p className="text-sm">Sotuvchilar bo'limi yuklanmoqda...</p>
+              </div>
+            }>
+              <SellerDashboard
+                onBackToShop={handleBackToShop}
+                onNotify={notify}
+              />
+            </Suspense>
           ) : (
             <ShopContent
               onNotify={notify}
