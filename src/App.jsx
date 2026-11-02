@@ -3,7 +3,6 @@ import { AuthProvider } from "./context/AuthContext";
 import { CartProvider } from "./context/CartContext";
 import { useProducts } from "./hooks/useProducts";
 
-import FirebaseConfigBanner from "./components/FirebaseConfigBanner";
 import Navbar from "./components/Navbar";
 import Banner from "./components/Banner";
 import CategoryFilter from "./components/CategoryFilter";
@@ -81,9 +80,6 @@ function ShopContent({ onNotify, onOpenSeller }) {
 
   return (
     <div className="min-h-screen flex flex-col bg-slate-50 selection:bg-indigo-600 selection:text-white">
-      {/* Top Firebase notification / status pill */}
-      <FirebaseConfigBanner />
-
       {/* Main Navigation */}
       <Navbar
         searchQuery={searchQuery}
