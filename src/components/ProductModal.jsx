@@ -77,9 +77,18 @@ export default function ProductModal({ product, onClose, onNotify }) {
             </div>
 
             {/* Title */}
-            <h2 className="text-xl sm:text-2xl font-black text-slate-900 leading-snug">
-              {product.name}
-            </h2>
+            <div>
+              <h2 className="text-xl sm:text-2xl font-black text-slate-900 leading-snug">
+                {product.name}
+              </h2>
+              {product.sellerName && (
+                <p className="text-xs text-slate-500 mt-1 flex items-center gap-1.5">
+                  <span className="w-2 h-2 rounded-full bg-emerald-500 inline-block" />
+                  <span>Sotuvchi do'kon:</span>
+                  <strong className="text-slate-800">{product.sellerName}</strong>
+                </p>
+              )}
+            </div>
 
             {/* Price */}
             <div className="flex items-baseline gap-3">

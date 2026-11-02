@@ -1,15 +1,11 @@
 /**
- * USE PRODUCTS CUSTOM HOOK (Firestore Database Integration)
+ * USE PRODUCTS CUSTOM HOOK (Firestore & Multi-Vendor Sync)
  * -----------------------------------------------------------
  * Firestore 'products' kolleksiyasidan real-vaqtda (onSnapshot)
- * mahsulotlarni tinglaydi va yuklab oladi.
- *
- * Qaytaradi:
- * - products: Product[]
- * - loading: boolean
- * - error: string | null
- * - filterByCategory: (category: string) => Product[]
- * - refetch: () => Promise<void>
+ * mahsulotlarni tinglaydi va umumiy katalog uchun birlashtiradi.
+ * 
+ * Barcha sotuvchilar qo'shgan mahsulotlar hamda boshlang'ich katalog 
+ * to'liq birlashtirilib, xaridorlarga umumiy katalogda ko'rsatiladi.
  */
 
 import { useState, useEffect, useCallback, useMemo } from "react";
@@ -26,8 +22,95 @@ import { db, isFirebaseConfigured } from "../lib/firebase";
 import { INITIAL_PRODUCTS } from "../data/products";
 import type { Product, UseProductsResult } from "../types";
 
+const LOCAL_CUSTOM_PRODUCTS_KEY = "orders_app_custom_products";
+
+/**
+ * Mahalliy saqlangan mahsulotlarni olish
+ */
+export const getLocalCustomProducts = (): Product[] => {
+  try {
+    if (typeof window === "undefined") return [];
+    const saved = localStorage.getItem(LOCAL_CUSTOM_PRODUCTS_KEY);
+    if (!saved) return [];
+    const parsed = JSON.parse(saved);
+    return Array.isArray(parsed) ? parsed : [];
+  } catch {
+    return [];
+  }
+};
+
+/**
+ * Mahsulotni lokal xotiraga saqlash
+ */
+export const saveProductLocally = (product: Product): void => {
+  try {
+    const current = getLocalCustomProducts();
+    const existingIndex = current.findIndex((p) => p.id === product.id);
+    let updated: Product[];
+    if (existingIndex > -1) {
+      updated = [...current];
+      updated[existingIndex] = product;
+    } else {
+      updated = [product, ...current];
+    }
+    localStorage.setItem(LOCAL_CUSTOM_PRODUCTS_KEY, JSON.stringify(updated));
+  } catch (err) {
+    console.error("Lokal mahsulotni saqlash xatosi:", err);
+  }
+};
+
+/**
+ * Mahsulotni lokal xotiradan o'chirish
+ */
+export const deleteProductLocally = (productId: string): void => {
+  try {
+    const current = getLocalCustomProducts();
+    const updated = current.filter((p) => p.id !== productId);
+    localStorage.setItem(LOCAL_CUSTOM_PRODUCTS_KEY, JSON.stringify(updated));
+  } catch (err) {
+    console.error("Lokal mahsulotni o'chirish xatosi:", err);
+  }
+};
+
+/**
+ * Firestore, Lokal va Boshlang'ich mahsulotlarni birlashtirish
+ */
+const mergeAllProducts = (firestoreItems: Product[] = []): Product[] => {
+  const localItems = getLocalCustomProducts();
+  const initialItems = (INITIAL_PRODUCTS as unknown as Product[]) || [];
+
+  const seenIds = new Set<string>();
+  const merged: Product[] = [];
+
+  // 1. Firestore mahsulotlari (eng yangi bulut ma'lumotlari birinchi o'rinda)
+  for (const item of firestoreItems) {
+    if (item && item.id && !seenIds.has(item.id)) {
+      seenIds.add(item.id);
+      merged.push(item);
+    }
+  }
+
+  // 2. Lokal saqlangan mahsulotlar (Firestore bilan sinxronlashmagan bo'lsa ham yo'qolmaydi)
+  for (const item of localItems) {
+    if (item && item.id && !seenIds.has(item.id)) {
+      seenIds.add(item.id);
+      merged.push(item);
+    }
+  }
+
+  // 3. Boshlang'ich katalog mahsulotlari (namuna tovarlar)
+  for (const item of initialItems) {
+    if (item && item.id && !seenIds.has(item.id)) {
+      seenIds.add(item.id);
+      merged.push(item);
+    }
+  }
+
+  return merged;
+};
+
 export const useProducts = (realtime: boolean = true): UseProductsResult => {
-  const [products, setProducts] = useState<Product[]>(INITIAL_PRODUCTS as unknown as Product[]);
+  const [products, setProducts] = useState<Product[]>(() => mergeAllProducts([]));
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -52,6 +135,9 @@ export const useProducts = (realtime: boolean = true): UseProductsResult => {
           inStock: data.inStock !== false,
           description: data.description || "",
           specs: data.specs || {},
+          sellerId: data.sellerId,
+          sellerEmail: data.sellerEmail,
+          sellerName: data.sellerName,
           createdAt: data.createdAt,
         });
       });
@@ -65,7 +151,7 @@ export const useProducts = (realtime: boolean = true): UseProductsResult => {
    */
   const refetch = useCallback(async (): Promise<void> => {
     if (!isFirebaseConfigured || !db) {
-      setProducts(INITIAL_PRODUCTS as unknown as Product[]);
+      setProducts(mergeAllProducts([]));
       setLoading(false);
       return;
     }
@@ -81,24 +167,18 @@ export const useProducts = (realtime: boolean = true): UseProductsResult => {
         const q = query(productsRef, orderBy("createdAt", "desc"));
         snapshot = await getDocs(q);
       } catch {
-        // Agar createdAt indeksi bo'lmasa oddiy getDocs qilamiz
+        // Agar createdAt indeksi bo'lmasa oddiy getDocs
         snapshot = await getDocs(productsRef);
       }
 
-      if (!snapshot.empty) {
-        const fetched = mapSnapshotToProducts(snapshot);
-        setProducts(fetched);
-      } else {
-        // Firestore hali bo'sh bo'lsa mahalliy boshlang'ich ma'lumotlar ishlatiladi
-        setProducts(INITIAL_PRODUCTS as unknown as Product[]);
-      }
+      const fetched = mapSnapshotToProducts(snapshot);
+      setProducts(mergeAllProducts(fetched));
     } catch (err: unknown) {
       const errorMessage =
         err instanceof Error ? err.message : "Mahsulotlarni yuklashda xatolik yuz berdi";
       console.error("❌ [useProducts] Firestore getDocs xatosi:", err);
       setError(errorMessage);
-      // Xatolikda ham sayt to'xtab qolmasligi uchun fallback ma'lumot beramiz
-      setProducts(INITIAL_PRODUCTS as unknown as Product[]);
+      setProducts(mergeAllProducts([]));
     } finally {
       setLoading(false);
     }
@@ -107,8 +187,8 @@ export const useProducts = (realtime: boolean = true): UseProductsResult => {
   // Real-time (onSnapshot) orqali avtomatik tinglash
   useEffect(() => {
     if (!isFirebaseConfigured || !db) {
-      // Firebase sozlanmagan bo'lsa mahalliy bazadan yuklaymiz
-      setProducts(INITIAL_PRODUCTS as unknown as Product[]);
+      // Firebase sozlanmagan bo'lsa mahalliy bazadan birlashtirib yuklaymiz
+      setProducts(mergeAllProducts([]));
       setLoading(false);
       return;
     }
@@ -125,22 +205,18 @@ export const useProducts = (realtime: boolean = true): UseProductsResult => {
           productsRef,
           (snapshot) => {
             try {
-              if (snapshot && !snapshot.empty) {
-                const fetched = mapSnapshotToProducts(snapshot);
-                setProducts(fetched);
-              } else {
-                setProducts(INITIAL_PRODUCTS as unknown as Product[]);
-              }
+              const fetched = mapSnapshotToProducts(snapshot);
+              setProducts(mergeAllProducts(fetched));
             } catch (mapErr) {
               console.warn("Snapshot mapping xatosi:", mapErr);
-              setProducts(INITIAL_PRODUCTS as unknown as Product[]);
+              setProducts(mergeAllProducts([]));
             }
             setLoading(false);
           },
           (err) => {
             console.warn("⚠️ [useProducts] onSnapshot ogohlantirishi:", err.message);
             setError(err.message);
-            setProducts(INITIAL_PRODUCTS as unknown as Product[]);
+            setProducts(mergeAllProducts([]));
             setLoading(false);
           }
         );
@@ -158,7 +234,7 @@ export const useProducts = (realtime: boolean = true): UseProductsResult => {
       }
     } catch (collErr: unknown) {
       console.warn("Firestore collection xatosi:", collErr);
-      setProducts(INITIAL_PRODUCTS as unknown as Product[]);
+      setProducts(mergeAllProducts([]));
       setLoading(false);
     }
   }, [realtime, mapSnapshotToProducts, refetch]);

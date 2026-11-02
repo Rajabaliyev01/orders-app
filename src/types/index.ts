@@ -18,6 +18,9 @@ export interface Product {
   inStock: boolean;
   description: string;
   specs?: ProductSpecs;
+  sellerId?: string;
+  sellerEmail?: string;
+  sellerName?: string;
   createdAt?: string | number | Date | Record<string, unknown>;
 }
 

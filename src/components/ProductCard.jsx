@@ -103,6 +103,12 @@ export default function ProductCard({ product, onSelectProduct, onNotify }) {
           <h3 className="font-bold text-slate-800 text-sm sm:text-base line-clamp-2 leading-snug group-hover:text-indigo-600 transition-colors">
             {product.name}
           </h3>
+
+          {product.sellerName && (
+            <p className="text-[11px] text-slate-400 mt-1 line-clamp-1">
+              Sotuvchi: <span className="font-semibold text-slate-600">{product.sellerName}</span>
+            </p>
+          )}
         </div>
 
         {/* Pricing & Cart Action */}
