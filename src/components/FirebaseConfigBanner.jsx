@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { isFirebaseConfigured } from "../firebase";
+import { isFirebaseConfigured } from "../lib/firebase";
 import { CheckCircle2, AlertCircle, X, ExternalLink, HelpCircle } from "lucide-react";
 
 export default function FirebaseConfigBanner() {

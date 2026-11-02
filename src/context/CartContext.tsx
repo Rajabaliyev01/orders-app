@@ -38,7 +38,9 @@ export const CartProvider: React.FC<CartProviderProps> = ({ children }) => {
     try {
       if (typeof window === "undefined") return [];
       const saved = localStorage.getItem(CART_STORAGE_KEY);
-      return saved ? (JSON.parse(saved) as CartItem[]) : [];
+      if (!saved) return [];
+      const parsed = JSON.parse(saved);
+      return Array.isArray(parsed) ? parsed : [];
     } catch (error) {
       console.warn("⚠️ localStorage dan savatni yuklashda xatolik:", error);
       return [];
@@ -51,7 +53,7 @@ export const CartProvider: React.FC<CartProviderProps> = ({ children }) => {
   useEffect(() => {
     try {
       if (typeof window !== "undefined") {
-        localStorage.setItem(CART_STORAGE_KEY, JSON.stringify(cart));
+        localStorage.setItem(CART_STORAGE_KEY, JSON.stringify(Array.isArray(cart) ? cart : []));
       }
     } catch (error) {
       console.error("❌ Savatni localStorage ga saqlashda xatolik:", error);
@@ -63,7 +65,10 @@ export const CartProvider: React.FC<CartProviderProps> = ({ children }) => {
     const handleStorageChange = (e: StorageEvent) => {
       if (e.key === CART_STORAGE_KEY && e.newValue) {
         try {
-          setCart(JSON.parse(e.newValue));
+          const parsed = JSON.parse(e.newValue);
+          if (Array.isArray(parsed)) {
+            setCart(parsed);
+          }
         } catch {
           // parse error
         }
@@ -142,8 +147,10 @@ export const CartProvider: React.FC<CartProviderProps> = ({ children }) => {
 
   // Avtomatik jami soni (totalItems) va jami narx (totalPrice / subtotal) hisobi
   const { totalItems, subtotal } = useMemo(() => {
+    if (!Array.isArray(cart)) return { totalItems: 0, subtotal: 0 };
     return cart.reduce(
       (acc, item) => {
+        if (!item) return acc;
         const qty = Number(item.quantity) || 0;
         const price = Number(item.price) || 0;
         return {

@@ -189,7 +189,9 @@ export const CATEGORIES = [
   "Uy-ro'zg'or"
 ];
 
-// O'zbekiston so'mida formatlash
+// O'zbekiston so'mida xavfsiz formatlash
 export const formatPrice = (price) => {
-  return new Intl.NumberFormat("uz-UZ").format(price) + " so'm";
+  const num = Number(price);
+  if (isNaN(num)) return "0 so'm";
+  return new Intl.NumberFormat("uz-UZ").format(num) + " so'm";
 };

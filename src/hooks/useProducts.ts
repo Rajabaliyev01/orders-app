@@ -116,33 +116,50 @@ export const useProducts = (realtime: boolean = true): UseProductsResult => {
     setLoading(true);
     setError(null);
 
-    const productsRef = collection(db, "products");
+    try {
+      const productsRef = collection(db, "products");
 
-    if (realtime) {
-      // Real-time rejim (onSnapshot)
-      const unsubscribe = onSnapshot(
-        productsRef,
-        (snapshot) => {
-          if (!snapshot.empty) {
-            const fetched = mapSnapshotToProducts(snapshot);
-            setProducts(fetched);
-          } else {
+      if (realtime) {
+        // Real-time rejim (onSnapshot)
+        const unsubscribe = onSnapshot(
+          productsRef,
+          (snapshot) => {
+            try {
+              if (snapshot && !snapshot.empty) {
+                const fetched = mapSnapshotToProducts(snapshot);
+                setProducts(fetched);
+              } else {
+                setProducts(INITIAL_PRODUCTS as unknown as Product[]);
+              }
+            } catch (mapErr) {
+              console.warn("Snapshot mapping xatosi:", mapErr);
+              setProducts(INITIAL_PRODUCTS as unknown as Product[]);
+            }
+            setLoading(false);
+          },
+          (err) => {
+            console.warn("⚠️ [useProducts] onSnapshot ogohlantirishi:", err.message);
+            setError(err.message);
             setProducts(INITIAL_PRODUCTS as unknown as Product[]);
+            setLoading(false);
           }
-          setLoading(false);
-        },
-        (err) => {
-          console.warn("⚠️ [useProducts] onSnapshot ogohlantirishi:", err.message);
-          setError(err.message);
-          setProducts(INITIAL_PRODUCTS as unknown as Product[]);
-          setLoading(false);
-        }
-      );
+        );
 
-      return () => unsubscribe();
-    } else {
-      // Bir martalik yuklash
-      refetch();
+        return () => {
+          try {
+            unsubscribe();
+          } catch {
+            // ignore
+          }
+        };
+      } else {
+        // Bir martalik yuklash
+        refetch();
+      }
+    } catch (collErr: unknown) {
+      console.warn("Firestore collection xatosi:", collErr);
+      setProducts(INITIAL_PRODUCTS as unknown as Product[]);
+      setLoading(false);
     }
   }, [realtime, mapSnapshotToProducts, refetch]);
 
@@ -151,11 +168,12 @@ export const useProducts = (realtime: boolean = true): UseProductsResult => {
    */
   const filterByCategory = useCallback(
     (category: string): Product[] => {
+      const list = Array.isArray(products) ? products : [];
       if (!category || category === "Barchasi") {
-        return products;
+        return list;
       }
-      return products.filter(
-        (p) => p.category.toLowerCase() === category.toLowerCase()
+      return list.filter(
+        (p) => p && p.category && String(p.category).toLowerCase() === category.toLowerCase()
       );
     },
     [products]

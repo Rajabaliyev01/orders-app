@@ -1,4 +1,4 @@
-import { useState, useMemo, useRef, useCallback } from "react";
+import { useState, useMemo, useRef, useCallback, Component } from "react";
 import { AuthProvider } from "./context/AuthContext";
 import { CartProvider } from "./context/CartContext";
 import { useProducts } from "./hooks/useProducts";
@@ -15,9 +15,60 @@ import AuthModal from "./components/AuthModal";
 import OrdersModal from "./components/OrdersModal";
 import NotificationToast from "./components/NotificationToast";
 import Footer from "./components/Footer";
-import SellerDashboard from "./components/SellerDashboard";
 
 import { Search, Loader2, AlertCircle, RefreshCw } from "lucide-react";
+
+// SellerDashboard lazy import qilamiz — bundling va xato izolatsiyasi uchun
+import SellerDashboard from "./components/SellerDashboard";
+
+/**
+ * Error Boundary — React xatolarini ushlash va oq ekran oldini olish
+ */
+class ErrorBoundary extends Component {
+  constructor(props) {
+    super(props);
+    this.state = { hasError: false, error: null };
+  }
+
+  static getDerivedStateFromError(error) {
+    return { hasError: true, error };
+  }
+
+  componentDidCatch(error, errorInfo) {
+    console.error("🔴 [ErrorBoundary] React xatosi ushlandi:", error, errorInfo);
+  }
+
+  render() {
+    if (this.state.hasError) {
+      return (
+        <div className="min-h-screen flex items-center justify-center bg-slate-50 p-6">
+          <div className="max-w-md w-full bg-white rounded-2xl shadow-xl p-8 text-center border border-slate-200">
+            <div className="w-16 h-16 rounded-full bg-rose-100 flex items-center justify-center mx-auto mb-4">
+              <AlertCircle size={32} className="text-rose-500" />
+            </div>
+            <h2 className="text-xl font-bold text-slate-900 mb-2">
+              Xatolik yuz berdi
+            </h2>
+            <p className="text-sm text-slate-500 mb-4">
+              Ilovada kutilmagan xatolik sodir bo'ldi. Sahifani qayta yuklang.
+            </p>
+            <pre className="text-xs text-left bg-slate-100 p-3 rounded-lg mb-4 overflow-auto max-h-32 text-rose-600">
+              {this.state.error?.message || "Noma'lum xatolik"}
+            </pre>
+            <button
+              onClick={() => window.location.reload()}
+              className="px-6 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-sm font-bold cursor-pointer transition-colors"
+            >
+              Sahifani qayta yuklash
+            </button>
+          </div>
+        </div>
+      );
+    }
+
+    return this.props.children;
+  }
+}
 
 /**
  * Do'kon asosiy kontenti — mahsulotlar katalogi, banner, filtrlash
@@ -39,30 +90,37 @@ function ShopContent({ onNotify, onOpenSeller }) {
   // Kategoriya, qidiruv va saralash mantiqi
   const filteredProducts = useMemo(() => {
     // 1. Kategoriya bo'yicha hook orqali filtrlash
-    let result = filterByCategory(selectedCategory);
+    let result = [];
+    try {
+      result = filterByCategory(selectedCategory);
+    } catch (err) {
+      console.warn("filterByCategory xatosi:", err);
+      result = products || [];
+    }
 
     // 2. Qidiruv so'zi bo'yicha filtrlash
     if (searchQuery.trim()) {
       const query = searchQuery.toLowerCase().trim();
       result = result.filter(
         (p) =>
-          p.name.toLowerCase().includes(query) ||
-          p.category.toLowerCase().includes(query) ||
+          p.name?.toLowerCase().includes(query) ||
+          p.category?.toLowerCase().includes(query) ||
           p.description?.toLowerCase().includes(query)
       );
     }
 
-    // 3. Narx va reyting bo'yicha saralash
+    // 3. Narx va reyting bo'yicha saralash (copy qilib sort qilish)
+    const sorted = [...result];
     if (sortBy === "price-asc") {
-      result.sort((a, b) => a.price - b.price);
+      sorted.sort((a, b) => (a.price || 0) - (b.price || 0));
     } else if (sortBy === "price-desc") {
-      result.sort((a, b) => b.price - a.price);
+      sorted.sort((a, b) => (b.price || 0) - (a.price || 0));
     } else if (sortBy === "rating-desc") {
-      result.sort((a, b) => b.rating - a.rating);
+      sorted.sort((a, b) => (b.rating || 0) - (a.rating || 0));
     }
 
-    return result;
-  }, [filterByCategory, selectedCategory, searchQuery, sortBy]);
+    return sorted;
+  }, [filterByCategory, products, selectedCategory, searchQuery, sortBy]);
 
   const scrollToProducts = () => {
     if (productsRef.current) {
@@ -158,7 +216,7 @@ function ShopContent({ onNotify, onOpenSeller }) {
                 Mahsulot topilmadi
               </h3>
               <p className="text-xs sm:text-sm text-slate-500 max-w-md mx-auto mb-6">
-                "{searchQuery}" so'rovi bo'yicha hech qanday natija chiqmadi. Boshqa toifani tanlang yoki qidiruv so'zini o'zgartiring.
+                &quot;{searchQuery}&quot; so&apos;rovi bo&apos;yicha hech qanday natija chiqmadi. Boshqa toifani tanlang yoki qidiruv so&apos;zini o&apos;zgartiring.
               </p>
               <button
                 onClick={() => {
@@ -242,29 +300,31 @@ export default function App() {
   }, []);
 
   return (
-    <AuthProvider>
-      <CartProvider>
+    <ErrorBoundary>
+      <AuthProvider>
+        <CartProvider>
 
-        {/* Sahifaga qarab content almashtirish */}
-        {currentPage === "seller" ? (
-          <SellerDashboard
-            onBackToShop={handleBackToShop}
-            onNotify={notify}
+          {/* Sahifaga qarab content almashtirish */}
+          {currentPage === "seller" ? (
+            <SellerDashboard
+              onBackToShop={handleBackToShop}
+              onNotify={notify}
+            />
+          ) : (
+            <ShopContent
+              onNotify={notify}
+              onOpenSeller={handleOpenSeller}
+            />
+          )}
+
+          {/* Global Notification Toast — ikkala sahifada ham ishlaydi */}
+          <NotificationToast
+            message={toastMessage}
+            onClose={() => setToastMessage("")}
           />
-        ) : (
-          <ShopContent
-            onNotify={notify}
-            onOpenSeller={handleOpenSeller}
-          />
-        )}
 
-        {/* Global Notification Toast — ikkala sahifada ham ishlaydi */}
-        <NotificationToast
-          message={toastMessage}
-          onClose={() => setToastMessage("")}
-        />
-
-      </CartProvider>
-    </AuthProvider>
+        </CartProvider>
+      </AuthProvider>
+    </ErrorBoundary>
   );
 }

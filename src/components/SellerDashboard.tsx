@@ -70,10 +70,14 @@ export default function SellerDashboard({
   const [seeding, setSeeding] = useState(false);
   const [imagePreviewError, setImagePreviewError] = useState(false);
 
+  // Xavfsiz massivlar
+  const safeOrders = Array.isArray(orders) ? orders : [];
+  const safeProducts = Array.isArray(products) ? products : [];
+
   // Umumiy statistika
-  const totalRevenue = orders.reduce((sum, o) => sum + (o.pricing?.totalAmount || 0), 0);
-  const totalProductsCount = products.length;
-  const totalOrdersCount = orders.length;
+  const totalRevenue = safeOrders.reduce((sum, o) => sum + (o?.pricing?.totalAmount || 0), 0);
+  const totalProductsCount = safeProducts.length;
+  const totalOrdersCount = safeOrders.length;
 
   const handleAddSpecRow = () => {
     setSpecsList([...specsList, { key: "", value: "" }]);
@@ -227,9 +231,9 @@ export default function SellerDashboard({
   };
 
   // Filtrlangan jadval mahsulotlari
-  const filteredTableProducts = products.filter((p) =>
-    p.name.toLowerCase().includes(searchTable.toLowerCase()) ||
-    p.category.toLowerCase().includes(searchTable.toLowerCase())
+  const filteredTableProducts = safeProducts.filter((p) =>
+    (p?.name || "").toLowerCase().includes(searchTable.toLowerCase()) ||
+    (p?.category || "").toLowerCase().includes(searchTable.toLowerCase())
   );
 
   return (

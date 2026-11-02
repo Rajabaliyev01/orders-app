@@ -117,11 +117,19 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   const loadLocalOrders = useCallback(() => {
     try {
       const local = localStorage.getItem(LOCAL_ORDERS_KEY);
-      const allOrders: Order[] = local ? JSON.parse(local) : [];
+      if (!local) {
+        setOrders([]);
+        return;
+      }
+      const allOrders = JSON.parse(local);
+      if (!Array.isArray(allOrders)) {
+        setOrders([]);
+        return;
+      }
       if (currentUser) {
-        setOrders(allOrders.filter((o) => o.userId === currentUser.uid || o.userId === "guest"));
+        setOrders(allOrders.filter((o) => o && (o.userId === currentUser.uid || o.userId === "guest")));
       } else {
-        setOrders(allOrders);
+        setOrders(allOrders.filter(Boolean));
       }
     } catch {
       setOrders([]);
@@ -147,7 +155,10 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         const querySnapshot: QuerySnapshot<DocumentData> = await getDocs(q);
         const fetchedOrders: Order[] = [];
         querySnapshot.forEach((doc) => {
-          fetchedOrders.push({ id: doc.id, ...(doc.data() as Omit<Order, "id">) });
+          const data = doc.data();
+          if (data) {
+            fetchedOrders.push({ id: doc.id, ...(data as Omit<Order, "id">) });
+          }
         });
         setOrders(fetchedOrders);
       } catch (err) {
