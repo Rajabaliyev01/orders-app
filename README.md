@@ -22,6 +22,25 @@
 
 ---
 
+## 📸 Skrinshotlar / Screenshots
+
+### 1. 🛍️ Bosh Sahifa — Mahsulotlar Katalogi
+![OrdersApp Bosh Sahifa](public/screenshots/Screenshot%202026-11-07%20at%2012.04.28.png)
+
+### 2. 🔐 Mijoz Login Modal
+![Mijoz Login](public/screenshots/Screenshot%202026-11-07%20at%2012.31.04.png)
+
+### 3. 🏪 Sotuvchilar Markazi — Auth
+![Seller Auth](public/screenshots/Screenshot%202026-11-07%20at%2012.07.21.png)
+
+### 4. 📊 Sotuvchi Dashboard — Mahsulotlar Ro'yxati
+![Seller Dashboard](public/screenshots/Screenshot%202026-11-07%20at%2012.05.09.png)
+
+### 5. ➕ Yangi Mahsulot Qo'shish
+![Add Product](public/screenshots/Screenshot%202026-11-07%20at%2012.05.25.png)
+
+---
+
 ## 🌟 Loyiha Haqida
 
 **OrdersApp** — zamonaviy texnologiyalar (React 19, Tailwind CSS v4, TypeScript, Firebase Auth & Firestore) asosida noldan yaratilgan, jahon standartlariga to'la javob beradigan professional internet do'koni va ko'p sotuvchili (Multi-Vendor) boshqaruv tizimi.
